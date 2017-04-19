@@ -4,46 +4,81 @@ extern crate rand;
 
 use piston_window::*;
 use opengl_graphics::GlGraphics;
+use rand::Rng;
 
 struct Game {
-    pub folks: Vec<Folk>
+    pub folks: Vec<Folk>,
+    pub player: Player
 }
 
 impl Game {
     pub fn new() -> Game {
         Game {
-            folks: vec![]
+            folks: vec![],
+            player: Player::new()
         }
     }
-    pub fn new_folk (&mut self) {
-        self.folks.push(Folk::new());
+    pub fn new_folk (&mut self, param_ltr:bool, param_speed:f64) {
+        self.folks.push(Folk::new(param_ltr, param_speed));
+    }
+}
+
+struct Player {
+    x: f64,
+    y: f64
+}
+
+impl Player {
+    pub fn new() -> Player {
+        Player {
+            x: 0.0,
+            y: 0.0
+        }
+    }
+    pub fn update(&mut self, x:f64, y:f64) {
+        self.x += x;
+        self.y += y;
     }
 }
 
 struct Folk {
     pub x: f64,
     pub y: f64,
-    moving: bool,
+    pub moving: bool,
     ltr: bool,
     speed: f64
 }
 
+fn decide_x(ltr:bool) -> f64 {
+    if ltr {
+        0.0
+    } else {
+        1000.0
+    }
+}
+
 impl Folk {
-    pub fn new() -> Folk {
+    pub fn new(param_ltr:bool, param_speed:f64) -> Folk {
         Folk {
-            x: 0.0,
+            x: decide_x(param_ltr),
             y: 500.0,
             moving: true,
-            ltr: true,
-            speed: 1.0
+            ltr: param_ltr,
+            speed: param_speed
         }
     }
     pub fn update(&mut self) {
         if self.moving {
             if self.ltr {
-                self.x += 1.0;
+                self.x += 1.0 * self.speed;
+                if self.x > 1000.0 {
+                    self.moving = false;
+                }
             } else {
-                self.x -= 1.0;
+                self.x -= 1.0 * self.speed;
+                if self.x < 0.0 {
+                    self.moving = false;
+                }
             }
         }
     }
@@ -51,14 +86,10 @@ impl Folk {
 
 
 fn main() {
-
-
     let opengl = OpenGL::V3_2;
 
-    //let game_size = Size::new(1024.0, 600.0);
-
     let mut window: PistonWindow = WindowSettings::new(
-        "Rocket!", [1000, 600])
+        "MOVE IT", [1000, 600])
         .opengl(opengl).samples(8).exit_on_esc(true).build().unwrap();
 
     window.set_ups(60);
@@ -67,8 +98,9 @@ fn main() {
     let mut gl = GlGraphics::new(opengl);
 
     let mut last_folk = 0.0;
-    let folk_interval = 2.0;
+    let folk_interval = 3.0;
     let mut timer = 0.0;
+    let mut rng = rand::thread_rng();
 
     let mut game = Game::new();
 
@@ -76,22 +108,50 @@ fn main() {
     while let Some(e) = window.next() {
         // Event handling
         match e {
+
+            Input::Press(Button::Keyboard(key)) => {
+                match key {
+                    Key::W => {
+                        game.player.update(0.0, -5.0);
+                    }
+                    Key::S => {
+                        game.player.update(0.0, 5.0);
+                    }
+                    Key::A => {
+                        game.player.update(-5.0, 0.0);
+                    }
+                    Key::D => {
+                        game.player.update(5.0, 0.0);
+                    }
+                    _ => {}
+                }
+
+            }
+
             Input::Update(args) => {
-                //time_controller.update_seconds(args.dt, input_controller.actions(), &mut state);
-                //eCollisionsController::handle_collisions(&mut state);
+
                 timer += args.dt;
                 last_folk += args.dt;
-                println!("{:?}", timer);
 
                 if last_folk > folk_interval {
                     println!("SPAWN");
                     last_folk = 0.0;
-                    game.new_folk();
+
+                    let speed = rng.gen::<f64>() + 1.0;
+                    let dir = rng.gen();
+
+                    println!("{:?} {:?}", speed, dir);
+                    game.new_folk(dir, speed);
                 }
 
                 for f in game.folks.iter_mut() {
                     f.update();
+                    if f.moving == false {
+                        //println!("remove item");
+                    }
                 }
+                // game.folks.remove(game.folks.iter_mut().position(|&x| x.moving == false).unwrap());
+
             }
 
             Input::Render(args) => {
@@ -100,7 +160,7 @@ fn main() {
                     clear([1.0; 4], g);
                     let folk_square = rectangle::square(0.0,0.0, 40.0);
                     rectangle([0.0, 0.0, 0.0, 1.0], folk_square, c.transform.trans(
-                        200.0, 200.0), g);
+                        game.player.x, game.player.y), g);
 
                     for f in game.folks.iter() {
                         let folk_square = rectangle::square(0.0,0.0, 40.0);
