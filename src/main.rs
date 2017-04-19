@@ -21,18 +21,33 @@ impl Game {
     pub fn new_folk (&mut self, param_ltr:bool, param_speed:f64) {
         self.folks.push(Folk::new(param_ltr, param_speed));
     }
+    pub fn collision_detection (&mut self) {
+        for f in self.folks.iter_mut() {
+            if self.player.x < f.x + f.w &&
+                self.player.x + self.player.w > f.x &&
+                self.player.y < f.y + f.h &&
+                self.player.y + self.player.h > f.y {
+                    println!("TTTOOOO");
+                    f.deactivate();
+                }
+        }
+    }
 }
 
 struct Player {
     x: f64,
-    y: f64
+    y: f64,
+    w: f64,
+    h: f64
 }
 
 impl Player {
     pub fn new() -> Player {
         Player {
             x: 0.0,
-            y: 0.0
+            y: 0.0,
+            w: 50.0,
+            h: 50.0
         }
     }
     pub fn update(&mut self, x:f64, y:f64) {
@@ -44,9 +59,14 @@ impl Player {
 struct Folk {
     pub x: f64,
     pub y: f64,
+    pub w: f64,
+    pub h: f64,
     pub moving: bool,
     ltr: bool,
-    speed: f64
+    speed: f64,
+    red: [f32; 4],
+    blue: [f32; 4],
+    color: [f32; 4]
 }
 
 fn decide_x(ltr:bool) -> f64 {
@@ -62,9 +82,14 @@ impl Folk {
         Folk {
             x: decide_x(param_ltr),
             y: 500.0,
+            w: 40.0,
+            h: 40.0,
             moving: true,
             ltr: param_ltr,
-            speed: param_speed
+            speed: param_speed,
+            red: [1.0, 0.0, 0.0, 1.0],
+            blue: [0.0, 0.0, 1.0, 1.0],
+            color: [1.0, 0.0, 0.0, 1.0]
         }
     }
     pub fn update(&mut self) {
@@ -81,6 +106,10 @@ impl Folk {
                 }
             }
         }
+    }
+    pub fn deactivate(&mut self) {
+        self.moving = false;
+        self.color = self.blue;
     }
 }
 
@@ -150,21 +179,22 @@ fn main() {
                         //println!("remove item");
                     }
                 }
-                // game.folks.remove(game.folks.iter_mut().position(|&x| x.moving == false).unwrap());
 
+                game.collision_detection();
+                // game.folks.remove(game.folks.iter_mut().position(|&x| x.moving == false).unwrap());
             }
 
             Input::Render(args) => {
 
                 window.draw_2d(&e, |c, g| {
                     clear([1.0; 4], g);
-                    let folk_square = rectangle::square(0.0,0.0, 40.0);
+                    let folk_square = rectangle::square(0.0,0.0, game.player.w);
                     rectangle([0.0, 0.0, 0.0, 1.0], folk_square, c.transform.trans(
                         game.player.x, game.player.y), g);
 
                     for f in game.folks.iter() {
-                        let folk_square = rectangle::square(0.0,0.0, 40.0);
-                        rectangle([0.0, 1.0, 0.0, 1.0], folk_square, c.transform.trans(
+                        let folk_square = rectangle::square(0.0, 0.0, f.w);
+                        rectangle(f.color, folk_square, c.transform.trans(
                             f.x, f.y), g);
                     }
 
