@@ -3,19 +3,25 @@ extern crate piston_window;
 extern crate rand;
 
 use piston_window::*;
-use opengl_graphics::GlGraphics;
+//use opengl_graphics::GlGraphics;
 use rand::Rng;
 
 struct Game {
     pub folks: Vec<Folk>,
-    pub player: Player
+    pub player: Player,
+    last_folk: f64,
+    folk_interval: f64,
+    timer: f64
 }
 
 impl Game {
     pub fn new() -> Game {
         Game {
             folks: vec![],
-            player: Player::new()
+            player: Player::new(),
+            last_folk: 0.0,
+            folk_interval: 3.0,
+            timer: 0.0,
         }
     }
     pub fn new_folk (&mut self, param_ltr:bool, param_speed:f64) {
@@ -27,10 +33,36 @@ impl Game {
                 self.player.x + self.player.w > f.x &&
                 self.player.y < f.y + f.h &&
                 self.player.y + self.player.h > f.y {
-                    println!("TTTOOOO");
                     f.deactivate();
                 }
         }
+    }
+    pub fn update (&mut self, dt:f64) {
+
+        let mut rng = rand::thread_rng();
+
+        self.timer += dt;
+        self.last_folk += dt;
+
+        if self.last_folk > self.folk_interval {
+            println!("SPAWN");
+            self.last_folk = 0.0;
+
+            let speed = rng.gen::<f64>() + 1.0;
+            let dir = rng.gen();
+
+            println!("{:?} {:?}", speed, dir);
+            self.new_folk(dir, speed);
+        }
+
+        for f in self.folks.iter_mut() {
+            f.update();
+            if f.moving == false {
+                //println!("remove item");
+            }
+        }
+
+
     }
 }
 
@@ -64,9 +96,8 @@ struct Folk {
     pub moving: bool,
     ltr: bool,
     speed: f64,
-    red: [f32; 4],
     blue: [f32; 4],
-    color: [f32; 4]
+    color: [f32; 4] // red
 }
 
 fn decide_x(ltr:bool) -> f64 {
@@ -87,7 +118,6 @@ impl Folk {
             moving: true,
             ltr: param_ltr,
             speed: param_speed,
-            red: [1.0, 0.0, 0.0, 1.0],
             blue: [0.0, 0.0, 1.0, 1.0],
             color: [1.0, 0.0, 0.0, 1.0]
         }
@@ -124,12 +154,7 @@ fn main() {
     window.set_ups(60);
     window.set_max_fps(60);
 
-    let mut gl = GlGraphics::new(opengl);
-
-    let mut last_folk = 0.0;
-    let folk_interval = 3.0;
-    let mut timer = 0.0;
-    let mut rng = rand::thread_rng();
+    //let mut gl = GlGraphics::new(opengl);
 
     let mut game = Game::new();
 
@@ -159,32 +184,12 @@ fn main() {
 
             Input::Update(args) => {
 
-                timer += args.dt;
-                last_folk += args.dt;
-
-                if last_folk > folk_interval {
-                    println!("SPAWN");
-                    last_folk = 0.0;
-
-                    let speed = rng.gen::<f64>() + 1.0;
-                    let dir = rng.gen();
-
-                    println!("{:?} {:?}", speed, dir);
-                    game.new_folk(dir, speed);
-                }
-
-                for f in game.folks.iter_mut() {
-                    f.update();
-                    if f.moving == false {
-                        //println!("remove item");
-                    }
-                }
-
+                game.update(args.dt);
                 game.collision_detection();
                 // game.folks.remove(game.folks.iter_mut().position(|&x| x.moving == false).unwrap());
             }
 
-            Input::Render(args) => {
+            Input::Render(_) => {
 
                 window.draw_2d(&e, |c, g| {
                     clear([1.0; 4], g);
@@ -197,9 +202,7 @@ fn main() {
                         rectangle(f.color, folk_square, c.transform.trans(
                             f.x, f.y), g);
                     }
-
                 });
-                //gl.draw(args.viewport(), |c, g| view::render_game(c, g, &mut resources, &state));
             }
 
             _ => {}
