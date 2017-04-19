@@ -1,0 +1,9 @@
+[package]
+name = "update-loop"
+version = "0.1.0"
+authors = ["lislis <mail@lislis.de>"]
+
+[dependencies]
+piston_window = "0.64.0"
+piston2d-opengl_graphics = "0.42.1"
+rand = "0.3.14"
